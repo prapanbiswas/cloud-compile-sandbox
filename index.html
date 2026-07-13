@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud-Compiled Web IDE</title>
+    <style>
+        :root {
+            --bg-primary: #0d0e12;
+            --bg-secondary: #161821;
+            --bg-tertiary: #1f2335;
+            --accent: #7aa2f7;
+            --accent-hover: #89ddff;
+            --text-main: #c0caf5;
+            --text-muted: #565f89;
+            --success: #9ece6a;
+            --error: #f7768e;
+            --warning: #e0af68;
+            --border: #24283b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        header h1::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 320px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-primary);
+        }
+
+        .panel-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            color: var(--text-main);
+        }
+
+        input, select, textarea {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.2);
+        }
+
+        .btn {
+            background-color: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background-color: var(--text-muted);
+            color: var(--bg-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(122, 162, 247, 0.1);
+            color: var(--accent-hover);
+        }
+
+        .editor-container {
+            flex: 2;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .editor-header {
+            background-color: var(--bg-secondary);
+            padding: 8px 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #codeEditor {
+            flex: 1;
+            resize: none;
+            border: none;
+            border-radius: 0;
+            font-family: 'Fira Code', 'Courier New', Courier, monospace;
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+            background-color: var(--bg-primary);
+        }
+
+        .console-container {
+            flex: 1;
+            background-color: #090a0f;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .console-header {
+            background-color: var(--bg-secondary);
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #consoleLog {
+            flex: 1;
+            padding: 16px;
+            font-family: 'Fira Code', 'Courier New', Courier, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            color: #a9b1d6;
+        }
+
+        .log-info { color: var(--accent); }
+        .log-success { color: var(--success); }
+        .log-error { color: var(--error); }
+        .log-warn { color: var(--warning); }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Cloud-Compiled Web IDE</h1>
+        <div style="font-size: 13px; color: var(--text-muted);" id="connectionStatus">Device Disconnected</div>
+    </header>
+
+    <div class="main-container">
+        <!-- Configuration & Action Sidebar -->
+        <div class="sidebar">
+            <div>
+                <div class="panel-title">Target Device</div>
+                <div class="form-group">
+                    <label for="boardType">Hardware Profile</label>
+                    <select id="boardType">
+                        <option value="esp32">ESP32 Dev Module</option>
+                        <option value="uno">Arduino Uno</option>
+                        <option value="nano">Arduino Nano (ATmega328P)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <div class="panel-title">GitHub Config Workspace</div>
+                <div class="form-group" style="gap: 12px;">
+                    <div class="form-group">
+                        <label for="ghUser">GitHub Username</label>
+                        <input type="text" id="ghUser" placeholder="e.g., octocat">
+                    </div>
+                    <div class="form-group">
+                        <label for="ghRepo">Compilation Repository</label>
+                        <input type="text" id="ghRepo" placeholder="e.g., cloud-compile-sandbox">
+                    </div>
+                    <div class="form-group">
+                        <label for="ghPat">Fine-Grained PAT</label>
+                        <input type="password" id="ghPat" placeholder="github_pat_...">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
+                <button class="btn" id="btnCompile">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    Compile Code
+                </button>
+                <button class="btn btn-secondary" id="btnFlash" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"></polyline><line x1="12" y1="12" x2="12" y2="21"></line><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path><polyline points="16 16 12 12 8 16"></polyline></svg>
+                    Flash Firmware
+                </button>
+            </div>
+        </div>
+
+        <!-- Working Canvas -->
+        <div class="workspace">
+            <div class="editor-container">
+                <div class="editor-header">
+                    <span>main.cpp</span>
+                    <span>C++ Application Text</span>
+                </div>
+                <textarea id="codeEditor" spellcheck="false">#include <Arduino.h>
+#include <ArduinoJson.h>
+
+#define LED_PIN 2
+
+void setup() {
+    pinMode(LED_PIN, OUTPUT);
+    Serial.begin(115200);
+    Serial.println("System Initialized!");
+}
+
+void loop() {
+    digitalWrite(LED_PIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_PIN, LOW);
+    delay(1000);
+}</textarea>
+            </div>
+
+            <!-- Terminal Logging Viewport -->
+            <div class="console-container">
+                <div class="console-header">
+                    <span>Live Compilation Terminal Monitor</span>
+                    <span style="cursor: pointer; color: var(--text-muted);" onclick="document.getElementById('consoleLog').innerHTML=''">Clear</span>
+                </div>
+                <div id="consoleLog">Terminal ready. Configure credentials and click "Compile Code" to instantiate process hooks...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Storage variable for compiled binary buffer memory allocation
+        let compiledBinaryBuffer = null;
+
+        // --- Console Logger Bridge ---
+        const term = {
+            log: (msg, type = 'info') => {
+                const consoleLog = document.getElementById('consoleLog');
+                const timestamp = new Date().toLocaleTimeString();
+                const span = document.createElement('span');
+                span.className = `log-${type}`;
+                span.textContent = `[${timestamp}] ${msg}\n`;
+                consoleLog.appendChild(span);
+                consoleLog.scrollTop = consoleLog.scrollHeight;
+            }
+        };
+
+        // --- C++ Direct Dependency Registry Matcher Engine ---
+        function extractDependencies(code) {
+            term.log("Executing Smart Dependency Parsing pass...", "info");
+            const includeRegex = /#include\s*[<"]([^>"]+)[>"]/g;
+            const foundLibraries = new Set();
+            let match;
+
+            // Known framework aliases mapping local includes to official PlatformIO registry paths
+            const registryMap = {
+                "ArduinoJson.h": "bblanchon/ArduinoJson",
+                "DHT.h": "adafruit/DHT sensor library",
+                "Adafruit_NeoPixel.h": "adafruit/Adafruit NeoPixel",
+                "PubSubClient.h": "knolleary/PubSubClient",
+                "LiquidCrystal_I2C.h": "marcoschwartz/LiquidCrystal_I2C",
+                "OneWire.h": "paulstoffregen/OneWire"
+            };
+
+            while ((match = includeRegex.exec(code)) !== null) {
+                const header = match[1];
+                if (registryMap[header]) {
+                    foundLibraries.add(registryMap[header]);
+                } else {
+                    // Filter native system architectures out of dependency pipeline
+                    const nativeExclusions = ["Arduino.h", "Wire.h", "SPI.h", "WiFi.h", "FS.h", "SPIFFS.h", "Update.h", "WebServer.h", "DNSServer.h"];
+                    if (!nativeExclusions.includes(header) && header.endsWith('.h')) {
+                        foundLibraries.add(header.replace('.h', ''));
+                    }
+                }
+            }
+            
+            const extracted = Array.from(foundLibraries);
+            term.log(`Extracted Runtime Dependencies: ${extracted.length ? extracted.join(', ') : 'None'}`, "success");
+            return extracted.join(', ');
+        }
+
+        // --- Native GitHub API Integration Engine ---
+        async function runGitHubCompilation() {
+            const user = document.getElementById('ghUser').value.trim();
+            const repo = document.getElementById('ghRepo').value.trim();
+            const pat = document.getElementById('ghPat').value.trim();
+            const board = document.getElementById('boardType').value;
+            const code = document.getElementById('codeEditor').value;
+
+            if (!user || !repo || !pat) {
+                term.log("Fatal Error: Missing validation credentials. Provide Username, Repo Name, and unique Scoped PAT.", "error");
+                term.log("Ensure the Scoped Personal Access Token possesses full Write/Workflow configuration privileges on your target repository.", "warn");
+                return;
+            }
+
+            document.getElementById('btnCompile').disabled = true;
+            compiledBinaryBuffer = null;
+            document.getElementById('btnFlash').disabled = true;
+
+            // Safe Base64 multi-byte UTF-8 standard encoding
+            const codeBase64 = btoa(encodeURIComponent(code).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+            const dependencies = extractDependencies(code);
+
+            const headers = {
+                "Authorization": `Bearer ${pat}`,
+                "Accept": "application/vnd.github.v3+json",
+                "Content-Type": "application/json"
+            };
+
+            try {
+                term.log("Contacting GitHub API infrastructure to trigger workflow...", "info");
+                
+                // Dispatch Workflow Event API Call
+                const dispatchResponse = await fetch(`https://api.github.com/repos/${user}/${repo}/actions/workflows/compile.yml/dispatches`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        ref: "main",
+                        inputs: {
+                            code_b64: codeBase64,
+                            board_type: board,
+                            libs_list: dependencies
+                        }
+                    })
+                });
+
+                if (!dispatchResponse.ok) {
+                    if (dispatchResponse.status === 401 || dispatchResponse.status === 403) {
+                        throw new Error("Authentication failure. Check that your Scoped PAT is valid, has not expired, and contains the required repository and actions access parameters.");
+                    } else {
+                        throw new Error(`GitHub Dispatches API rejected request with code ${dispatchResponse.status}: ${dispatchResponse.statusText}`);
+                    }
+                }
+
+                term.log("Workflow trigger request accepted. Waiting for runner allocation assignment...", "info");
+                
+                // Polling Loop to isolate exact execution transaction container
+                await new Promise(resolve => setTimeout(resolve, 6000)); 
+                let runId = null;
+                
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    const runsResponse = await fetch(`https://api.github.com/repos/${user}/${repo}/actions/runs?workflow=compile.yml`, { headers });
+                    const runsData = await runsResponse.json();
+                    
+                    if (runsData.workflow_runs && runsData.workflow_runs.length > 0) {
+                        const topRun = runsData.workflow_runs[0];
+                        if (topRun.status !== 'completed') {
+                            runId = topRun.id;
+                            break;
+                        }
+                    }
+                    await new Promise(res => setTimeout(res, 3000));
+                }
+
+                if (!runId) throw new Error("Timeout occurred trying to establish pipeline context hook with GitHub dynamic runner infrastructure.");
+                term.log(`Linked execution instance context identified: Target ID #${runId}`, "success");
+
+                // Dynamic Status & Log Tracker Polling Loop
+                let compilationSuccessful = false;
+                while (true) {
+                    const statusResponse = await fetch(`https://api.github.com/repos/${user}/${repo}/actions/runs/${runId}`, { headers });
+                    const runContext = await statusResponse.json();
+                    
+                    term.log(`Current Pipeline State Status: [${runContext.status.toUpperCase()}]`, "info");
+                    
+                    if (runContext.status === 'completed') {
+                        compilationSuccessful = (runContext.conclusion === 'success');
+                        break;
+                    }
+                    await new Promise(res => setTimeout(res, 5000));
+                }
+
+                // Retrieve build files from the ephemeral branch storage layer
+                term.log("Accessing build artifacts branch repository workspace...", "info");
+                
+                const logsRefResponse = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/compilation.log?ref=build-output`, { headers });
+                if (logsRefResponse.ok) {
+                    const logData = await logsRefResponse.json();
+                    const rawLogsText = decodeURIComponent(escape(atob(logData.content.replace(/\s/g, ''))));
+                    
+                    document.getElementById('consoleLog').innerHTML += `<span style="color:#a9b1d6">${rawLogsText}</span>`;
+                    document.getElementById('consoleLog').scrollTop = document.getElementById('consoleLog').scrollHeight;
+                }
+
+                if (!compilationSuccessful) {
+                    throw new Error("Cloud execution build failed. Analyze standard stack tracking lines above to troubleshoot compiler dependencies or logic bugs.");
+                }
+
+                term.log("Compilation cycle verified as fully absolute. Downloading dynamic binary build asset...", "info");
+                const binaryRefResponse = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/firmware.bin?ref=build-output`, { headers });
+                
+                if (!binaryRefResponse.ok) throw new Error("Missing binary file context target inside target branch reference container.");
+                
+                const binaryData = await binaryRefResponse.json();
+                const binaryString = atob(binaryData.content.replace(/\s/g, ''));
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                compiledBinaryBuffer = bytes.buffer;
+                term.log(`Firmware binary package loaded directly into client-side browser memory allocations (${len} bytes). Ready to stream out flash target.`, "success");
+                document.getElementById('btnFlash').disabled = false;
+
+            } catch (err) {
+                term.log(`Process Halted: ${err.message}`, "error");
+            } finally {
+                document.getElementById('btnCompile').disabled = false;
+            }
+        }
+
+        // --- Web Serial Flashing Execution Harness ---
+        async function executeHardwareFlashPipeline() {
+            if (!compiledBinaryBuffer) {
+                term.log("Hardware deployment aborted: No executable firmware resource allocations reside in local buffer memory.", "error");
+                return;
+            }
+
+            if (!("serial" in navigator)) {
+                term.log("Incompatible browser engine architecture: Client interface lacks functional navigator.serial access definitions.", "error");
+                return;
+            }
+
+            document.getElementById('btnFlash').disabled = true;
+            let port = null;
+            let reader = null;
+            let writer = null;
+
+            try {
+                term.log("Requesting USB resource channel access allocation from physical interface layer...", "info");
+                port = await navigator.serial.requestPort();
+                
+                // Establish communication protocol standard values
+                await port.open({ baudRate: 115200 });
+                document.getElementById('connectionStatus').textContent = "Device Connected (Flashing)";
+                term.log("Hardware channel link initialized successfully. Allocating streaming read/write resource locks...", "info");
+                
+                writer = port.writable.getWriter();
+                reader = port.readable.getReader();
+
+                term.log("Initiating target reset sequence toggle hooks...", "info");
+                // Native Web Serial control signaling sequence simulating microcontroller reset triggers
+                await port.setSignals({ dataTerminalReady: false, readyToSend: true });
+                await new Promise(r => setTimeout(r, 100));
+                await port.setSignals({ dataTerminalReady: true, readyToSend: false });
+                await new Promise(r => setTimeout(r, 400));
+                await port.setSignals({ dataTerminalReady: false, readyToSend: false });
+
+                term.log("Streaming direct compiled system binary stream data across physical bus channels...", "info");
+                
+                const dataView = new Uint8Array(compiledBinaryBuffer);
+                const packageChunkSize = 1024;
+                let offset = 0;
+
+                while (offset < dataView.length) {
+                    const currentChunk = dataView.slice(offset, offset + packageChunkSize);
+                    await writer.write(currentChunk);
+                    offset += packageChunkSize;
+                    
+                    const computationalProgress = Math.min(100, Math.round((offset / dataView.length) * 100));
+                    term.log(`Streaming block packets to storage sectors: ${computationalProgress}% complete...`, "info");
+                    
+                    // Allow hardware buffers to settle cleanly
+                    await new Promise(r => setTimeout(r, 40));
+                }
+
+                term.log("All data sectors systematically written. Restarting processor context into application run loop...", "success");
+                
+                // Toggle RTS/DTR mapping parameters to force code execution context initialization
+                await port.setSignals({ dataTerminalReady: false, readyToSend: true });
+                await new Promise(r => setTimeout(r, 200));
+                await port.setSignals({ dataTerminalReady: false, readyToSend: false });
+                
+                term.log("Microcontroller flash updates completed absolute.", "success");
+
+            } catch (err) {
+                term.log(`Web Serial execution failure encountered: ${err.message}`, "error");
+                term.log("Verify that the target device is properly plugged into the USB port and that no other application (like a serial monitor) is occupying the connection.", "warn");
+            } finally {
+                // Safeguard framework: release resource controls meticulously to prevent hardware lockup patterns
+                term.log("Releasing hardware channel interface locks...", "info");
+                if (reader) {
+                    try { reader.releaseLock(); } catch(e) {}
+                }
+                if (writer) {
+                    try { writer.releaseLock(); } catch(e) {}
+                }
+                if (port) {
+                    try { await port.close(); } catch(e) {}
+                }
+                document.getElementById('connectionStatus').textContent = "Device Disconnected";
+                document.getElementById('btnFlash').disabled = false;
+                term.log("Web Serial hardware stack cleanly recycled.", "info");
+            }
+        }
+
+        // Attach action click listeners
+        document.getElementById('btnCompile').addEventListener('click', runGitHubCompilation);
+        document.getElementById('btnFlash').addEventListener('click', executeHardwareFlashPipeline);
+    </script>
+</body>
+</html>
