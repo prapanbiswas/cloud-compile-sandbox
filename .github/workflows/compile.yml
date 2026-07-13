@@ -1,0 +1,135 @@
+name: Ephemeral Cloud Compiler Container Engine
+
+on:
+  workflow_dispatch:
+    inputs:
+      code_b64:
+        description: 'Microcontroller C++ Source Code encoded inside Base64 envelope format'
+        required: true
+      board_type:
+        description: 'Target hardware environment execution profile'
+        required: true
+        default: 'esp32'
+      libs_list:
+        description: 'Comma separated list of dynamic library package string tags'
+        required: false
+        default: ''
+
+jobs:
+  instantiate_compile_sandbox:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Initialize Code Workspace Structures
+      uses: actions/checkout@v4
+
+    - name: Provision Python Runtime Environment
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install PlatformIO Core Core Component Toolchains
+      run: |
+        python -m pip install --upgrade pip
+        pip install -U platformio
+
+    - name: Construct PlatformIO Project Context Structures
+      run: |
+        mkdir -p src
+        mkdir -p lib
+        
+        # Determine explicit framework and target hardware mapping details dynamically
+        if [ "${{ github.event.inputs.board_type }}" = "esp32" ]; then
+          PLATFORM="espressif32"
+          BOARD="esp32dev"
+          FRAMEWORK="arduino"
+          BIN_PATH=".pio/build/esp32dev/firmware.bin"
+        elif [ "${{ github.event.inputs.board_type }}" = "uno" ]; then
+          PLATFORM="atmelavr"
+          BOARD="uno"
+          FRAMEWORK="arduino"
+          BIN_PATH=".pio/build/uno/firmware.hex"
+        elif [ "${{ github.event.inputs.board_type }}" = "nano" ]; then
+          PLATFORM="atmelavr"
+          BOARD="nanoatmega328"
+          FRAMEWORK="arduino"
+          BIN_PATH=".pio/build/nanoatmega328/firmware.hex"
+        else
+          echo "Fatal Board Spec Type Mismatched Profile"
+          exit 1
+        fi
+        
+        # Build configuration initialization files
+        echo "[env:${BOARD}]" > platformio.ini
+        echo "platform = ${PLATFORM}" >> platformio.ini
+        echo "board = ${BOARD}" >> platformio.ini
+        echo "framework = ${FRAMEWORK}" >> platformio.ini
+        
+        # Append runtime mapping library configurations safely if present
+        if [ ! -z "${{ github.event.inputs.libs_list }}" ]; then
+          echo "lib_deps =" >> platformio.ini
+          echo "${{ github.event.inputs.libs_list }}" | sed 's/,/\n /g' >> platformio.ini
+        fi
+        
+        echo "Generated Configuration Context Profile:"
+        cat platformio.ini
+
+    - name: Extract Microcontroller Source Assets
+      run: |
+        echo "${{ github.event.inputs.code_b64 }}" | base64 -d > src/main.cpp
+        echo "Extracted Source Verification:"
+        cat src/main.cpp
+
+    - name: Execute Workspace Toolchain Compilation Task
+      run: |
+        # Force redirection of error streams and text streams into single compilation.log resource
+        pio run 2>&1 | tee compilation.log
+        
+        # Relocate exact output targets based on active target definitions
+        if [ "${{ github.event.inputs.board_type }}" = "esp32" ]; then
+          cp .pio/build/esp32dev/firmware.bin ./firmware.bin || exit 1
+        elif [ "${{ github.event.inputs.board_type }}" = "uno" ]; then
+          cp .pio/build/uno/firmware.hex ./firmware.bin || exit 1
+        elif [ "${{ github.event.inputs.board_type }}" = "nano" ]; then
+          cp .pio/build/nanoatmega328/firmware.hex ./firmware.bin || exit 1
+        fi
+
+    - name: Persist Raw Application Compilation Logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: compilation-history-logs
+        path: compilation.log
+
+    - name: Persist Executable Binary Outputs
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: targeted-microcontroller-firmware
+        path: firmware.bin
+
+    - name: Dispatch Outputs to Elicitation Client Content Interface Branches
+      if: always()
+      run: |
+        git config --global user.name "Github Action Compiler"
+        git config --global user.email "actions@github.com"
+        
+        # Force isolate and generate dedicated, unlinked tracking branch structures
+        git checkout --orphan build-output
+        git rm -rf .
+        
+        # Package and copy compilation artifacts into isolation context
+        cp ../../compilation.log ./compilation.log || touch compilation.log
+        if [ -f ../../firmware.bin ]; then
+          cp ../../firmware.bin ./firmware.bin
+        fi
+        
+        # Commit context modifications and push forcefully to serverless consumer access locations
+        git add compilation.log
+        if [ -f firmware.bin ]; then
+          git add firmware.bin
+        fi
+        
+        git commit -m "Deploy compilation production output artifacts for run ID ${{ github.run_id }}"
+        git push origin build-output --force
+        
