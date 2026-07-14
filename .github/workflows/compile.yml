@@ -15,6 +15,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+
 jobs:
   instantiate_compile_sandbox:
     runs-on: ubuntu-latest
@@ -28,7 +31,7 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install PlatformIO Core Core Component Toolchains
+    - name: Install PlatformIO Core Component Toolchains
       run: |
         python -m pip install --upgrade pip
         pip install -U platformio
@@ -38,60 +41,57 @@ jobs:
         mkdir -p src
         mkdir -p lib
         
-        # Determine explicit framework and target hardware mapping details dynamically
         if [ "${{ github.event.inputs.board_type }}" = "esp32" ]; then
           PLATFORM="espressif32"
           BOARD="esp32dev"
           FRAMEWORK="arduino"
-          BIN_PATH=".pio/build/esp32dev/firmware.bin"
         elif [ "${{ github.event.inputs.board_type }}" = "uno" ]; then
           PLATFORM="atmelavr"
           BOARD="uno"
           FRAMEWORK="arduino"
-          BIN_PATH=".pio/build/uno/firmware.hex"
         elif [ "${{ github.event.inputs.board_type }}" = "nano" ]; then
           PLATFORM="atmelavr"
           BOARD="nanoatmega328"
           FRAMEWORK="arduino"
-          BIN_PATH=".pio/build/nanoatmega328/firmware.hex"
-        else
-          echo "Fatal Board Spec Type Mismatched Profile"
-          exit 1
         fi
         
-        # Build configuration initialization files
         echo "[env:${BOARD}]" > platformio.ini
         echo "platform = ${PLATFORM}" >> platformio.ini
         echo "board = ${BOARD}" >> platformio.ini
         echo "framework = ${FRAMEWORK}" >> platformio.ini
         
-        # Append runtime mapping library configurations safely if present
         if [ ! -z "${{ github.event.inputs.libs_list }}" ]; then
           echo "lib_deps =" >> platformio.ini
           echo "${{ github.event.inputs.libs_list }}" | sed 's/,/\n /g' >> platformio.ini
         fi
-        
-        echo "Generated Configuration Context Profile:"
-        cat platformio.ini
 
     - name: Extract Microcontroller Source Assets
       run: |
         echo "${{ github.event.inputs.code_b64 }}" | base64 -d > src/main.cpp
-        echo "Extracted Source Verification:"
-        cat src/main.cpp
 
     - name: Execute Workspace Toolchain Compilation Task
       run: |
-        # Force redirection of error streams and text streams into single compilation.log resource
         pio run 2>&1 | tee compilation.log
         
-        # Relocate exact output targets based on active target definitions
+        mkdir -p /tmp/build-artifacts
+        cp compilation.log /tmp/build-artifacts/
+        
         if [ "${{ github.event.inputs.board_type }}" = "esp32" ]; then
-          cp .pio/build/esp32dev/firmware.bin ./firmware.bin || exit 1
-        elif [ "${{ github.event.inputs.board_type }}" = "uno" ]; then
-          cp .pio/build/uno/firmware.hex ./firmware.bin || exit 1
-        elif [ "${{ github.event.inputs.board_type }}" = "nano" ]; then
-          cp .pio/build/nanoatmega328/firmware.hex ./firmware.bin || exit 1
+          cp .pio/build/esp32dev/firmware.bin /tmp/build-artifacts/firmware.bin
+          cp .pio/build/esp32dev/bootloader.bin /tmp/build-artifacts/bootloader.bin
+          cp .pio/build/esp32dev/partitions.bin /tmp/build-artifacts/partitions.bin
+          
+          # Capture the 4th file: boot_app0.bin (OTA boot app selector)
+          if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
+            cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin /tmp/build-artifacts/boot_app0.bin
+          elif [ -f .pio/build/esp32dev/boot_app0.bin ]; then
+            cp .pio/build/esp32dev/boot_app0.bin /tmp/build-artifacts/boot_app0.bin
+          else
+            # Fallback check if path styles differ across toolchain updates
+            find .pio/build/ -name "boot_app0.bin" -exec cp {} /tmp/build-artifacts/boot_app0.bin \;
+          fi
+        else
+          cp .pio/build/uno/firmware.hex /tmp/build-artifacts/firmware.bin
         fi
 
     - name: Persist Raw Application Compilation Logs
@@ -99,14 +99,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: compilation-history-logs
-        path: compilation.log
+        path: /tmp/build-artifacts/compilation.log
 
     - name: Persist Executable Binary Outputs
       if: success()
       uses: actions/upload-artifact@v4
       with:
         name: targeted-microcontroller-firmware
-        path: firmware.bin
+        path: /tmp/build-artifacts/
 
     - name: Dispatch Outputs to Elicitation Client Content Interface Branches
       if: always()
@@ -114,22 +114,29 @@ jobs:
         git config --global user.name "Github Action Compiler"
         git config --global user.email "actions@github.com"
         
-        # Force isolate and generate dedicated, unlinked tracking branch structures
         git checkout --orphan build-output
         git rm -rf .
         
-        # Package and copy compilation artifacts into isolation context
-        cp ../../compilation.log ./compilation.log || touch compilation.log
-        if [ -f ../../firmware.bin ]; then
-          cp ../../firmware.bin ./firmware.bin
-        fi
-        
-        # Commit context modifications and push forcefully to serverless consumer access locations
+        cp /tmp/build-artifacts/compilation.log ./compilation.log || touch compilation.log
         git add compilation.log
-        if [ -f firmware.bin ]; then
+        
+        if [ -f /tmp/build-artifacts/firmware.bin ]; then
+          cp /tmp/build-artifacts/firmware.bin ./firmware.bin
           git add firmware.bin
         fi
+        if [ -f /tmp/build-artifacts/bootloader.bin ]; then
+          cp /tmp/build-artifacts/bootloader.bin ./bootloader.bin
+          git add bootloader.bin
+        fi
+        if [ -f /tmp/build-artifacts/partitions.bin ]; then
+          cp /tmp/build-artifacts/partitions.bin ./partitions.bin
+          git add partitions.bin
+        fi
+        if [ -f /tmp/build-artifacts/boot_app0.bin ]; then
+          cp /tmp/build-artifacts/boot_app0.bin ./boot_app0.bin
+          git add boot_app0.bin
+        fi
         
-        git commit -m "Deploy compilation production output artifacts for run ID ${{ github.run_id }}"
+        git commit -m "Deploy comprehensive 4-file production artifacts for run ID ${{ github.run_id }}"
         git push origin build-output --force
         
