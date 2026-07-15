@@ -551,39 +551,28 @@ void loop() {
             }
         }
 
-        // --- One-Click Dynamic Zipball Retrieval Module ---
+        // --- FIXED: One-Click Dynamic Zipball Retrieval Module via Native OS Link Hook ---
         async function fetchFirmwareBundleArchive() {
             const user = document.getElementById('ghUser').value.trim();
             const repo = document.getElementById('ghRepo').value.trim();
-            const pat = document.getElementById('ghPat').value.trim();
 
             term.log("Requesting auto-compressed branch zipball payload download allocations...", 'info');
 
             try {
-                // Hits the native GitHub endpoint that instantly converts a targeted branch workspace structure into a flat zip package
-                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/zipball/build-output`, {
-                    headers: {
-                        "Authorization": `Bearer ${pat}`,
-                        "Accept": "application/vnd.github.v3+json"
-                    }
-                });
-
-                if(!response.ok) throw new Error("Could not pull zipball resource reference structures down.");
-
-                const fileBlob = await response.blob();
-                const clientDownloadUrl = window.URL.createObjectURL(fileBlob);
+                // Direct native browser download URL structure to completely avoid CORS preflight network blocks
+                const downloadUrl = `https://github.com/${user}/${repo}/archive/refs/heads/build-output.zip`;
                 
-                // Programmatic anchor click trigger to pass data cleanly to the device download manager
+                term.log("Bypassing CORS filters via direct browser download channel...", 'info');
+                
+                // Create an ephemeral anchor element to force an OS-level download stream
                 const tempAnchor = document.createElement('a');
-                tempAnchor.href = clientDownloadUrl;
-                tempAnchor.download = `${repo}-esp32-firmware.zip`;
+                tempAnchor.href = downloadUrl;
+                tempAnchor.download = `${repo}-esp32-firmware.zip`; 
                 document.body.appendChild(tempAnchor);
                 tempAnchor.click();
                 tempAnchor.remove();
                 
-                window.URL.revokeObjectURL(clientDownloadUrl);
-                term.log("ZIP firmware bundle downloaded cleanly. Extract it on your mobile storage disk to execute flash tools natively!", 'success');
-
+                term.log("Download sequence successfully handed off to mobile browser engine!", 'success');
             } catch(e) {
                 term.log(`Archive download error encountered: ${e.message}`, 'error');
             }
