@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cloud Web IDE</title>
+    <title>Cloud Web IDE Bundle Packager</title>
     <style>
         :root {
             --bg-main: #090a0f;
@@ -101,7 +101,7 @@
             cursor: not-allowed;
         }
 
-        /* --- Main Content Workspace Switcher --- */
+        /* --- Workspace Container View Switcher --- */
         .workspace-container {
             flex: 1;
             position: relative;
@@ -138,7 +138,7 @@
             transform: translateX(0%);
         }
 
-        /* --- Code Editor Layout --- */
+        /* --- Code Editor Layout Canvas --- */
         #codeEditor {
             flex: 1;
             width: 100%;
@@ -154,14 +154,14 @@
             outline: none;
         }
 
-        /* --- Execution Deck Layout --- */
+        /* --- Execution Deck Panel --- */
         .execution-header {
             background-color: var(--bg-card);
             border-bottom: 1px solid var(--border);
-            padding: 12px 16px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
         }
 
         .execution-meta {
@@ -187,49 +187,38 @@
             display: inline-block;
         }
 
-        .btn-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
         .action-btn {
-            background-color: var(--bg-input);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 12px;
+            background-color: var(--success);
+            color: var(--bg-main);
+            border: none;
+            padding: 14px;
             border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            box-shadow: 0 4px 14px rgba(158, 206, 106, 0.2);
+            transition: all 0.2s ease;
         }
 
         .action-btn:active {
-            background-color: var(--border);
-        }
-
-        .action-btn.primary {
-            background-color: var(--success);
-            color: var(--bg-main);
-            border: none;
-        }
-
-        .action-btn.danger {
-            background-color: transparent;
-            border: 1px solid var(--error);
-            color: var(--error);
+            transform: scale(0.98);
+            opacity: 0.9;
         }
 
         .action-btn:disabled {
-            opacity: 0.4;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            box-shadow: none;
             cursor: not-allowed;
+            transform: none;
         }
 
-        /* --- Serial Monitor & Terminal Deck --- */
+        /* --- Logging Terminal Log Panel --- */
         .terminal-container {
             flex: 1;
             display: flex;
@@ -247,27 +236,9 @@
             overflow-y: auto;
             white-space: pre-wrap;
             color: #a9b1d6;
-            border-bottom: 1px solid var(--border);
         }
 
-        .serial-input-row {
-            display: flex;
-            background-color: var(--bg-card);
-            padding: 8px;
-            gap: 8px;
-        }
-
-        #serialInput {
-            flex: 1;
-            background-color: var(--bg-input);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 14px;
-        }
-
-        /* --- Slide-Out Drawer Navigation Panels --- */
+        /* --- Drawer Configuration Overlay Layout --- */
         .drawer-overlay {
             position: fixed;
             top: 0;
@@ -354,52 +325,6 @@
             font-size: 14px;
         }
 
-        /* --- Bootloader Modal Info Dialog --- */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-        }
-
-        .modal.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .modal-card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            padding: 24px;
-            text-align: center;
-        }
-
-        .modal-card h3 {
-            margin-bottom: 12px;
-            color: var(--warning);
-        }
-
-        .modal-card p {
-            font-size: 14px;
-            line-height: 1.5;
-            color: var(--text-main);
-            margin-bottom: 20px;
-        }
-
-        /* --- Logging Decorators --- */
         .log-info { color: var(--accent); }
         .log-success { color: var(--success); }
         .log-error { color: var(--error); }
@@ -408,7 +333,7 @@
 </head>
 <body>
 
-    <!-- --- Top Nav Bar --- -->
+    <!-- --- Header Navigation Bar --- -->
     <header class="top-nav">
         <div class="nav-left">
             <button class="menu-btn" id="btnOpenDrawer">
@@ -419,9 +344,9 @@
         <button class="btn-compile" id="btnCompile">Compile</button>
     </header>
 
-    <!-- --- Workspace Area Panels --- -->
+    <!-- --- Screen State Viewports --- -->
     <main class="workspace-container">
-        <!-- View 1: Main Source Code Area -->
+        <!-- View 1: Application Script Text Field -->
         <div class="view-pane" id="viewEditor">
             <textarea id="codeEditor" spellcheck="false">#include <Arduino.h>
 
@@ -440,29 +365,25 @@ void loop() {
 }</textarea>
         </div>
 
-        <!-- View 2: Flashing & Realtime Serial Deck -->
+        <!-- View 2: Compilation & Download Deck -->
         <div class="view-pane" id="viewExecution">
             <div class="execution-header">
                 <div class="execution-meta">
-                    <span class="status-badge"><span class="status-dot" id="statusDot"></span><span id="statusTxt">Build Ready</span></span>
-                    <span style="font-size: 12px; color: var(--text-muted); cursor: pointer;" id="btnReturnEditor">← Return to Editor</span>
+                    <span class="status-badge"><span class="status-dot" id="statusDot"></span><span id="statusTxt">Ready</span></span>
+                    <span style="font-size: 12px; color: var(--text-muted); cursor: pointer;" id="btnReturnEditor">← Back to Editor</span>
                 </div>
-                <div class="btn-row">
-                    <button class="action-btn danger" id="btnErase">Erase Chip</button>
-                    <button class="action-btn primary" id="btnFlash">Upload Code</button>
-                </div>
+                <button class="action-btn" id="btnDownloadBundle" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Download 4-File Flash Bundle (.ZIP)
+                </button>
             </div>
             <div class="terminal-container">
                 <div class="terminal-log" id="termLog"></div>
-                <div class="serial-input-row">
-                    <input type="text" id="serialInput" placeholder="Send serial command to target hardware..." disabled>
-                    <button class="action-btn" id="btnSendSerial" style="padding: 8px 16px;" disabled>Send</button>
-                </div>
             </div>
         </div>
     </main>
 
-    <!-- --- Slide-Out Configuration Drawer --- -->
+    <!-- --- Setup Options Sliding Side Panel Drawer --- -->
     <div class="drawer-overlay" id="drawerOverlay"></div>
     <nav class="drawer">
         <div class="drawer-header">
@@ -471,7 +392,7 @@ void loop() {
         </div>
         <div class="drawer-content">
             <div class="form-group">
-                <label>Target Hardware</label>
+                <label>Target Hardware Profile</label>
                 <select id="boardType">
                     <option value="esp32">ESP32 Dev Module</option>
                     <option value="uno">Arduino Uno</option>
@@ -493,23 +414,18 @@ void loop() {
         </div>
     </nav>
 
-    <!-- --- Bootloader Prompter Modal --- -->
-    <div class="modal" id="bootloaderModal">
-        <div class="modal-card">
-            <h3>Bootloader Handshake Prompt</h3>
-            <p>The system is waiting to interface with the microcontroller chip storage layer.<br><br>Please press and <b>HOLD</b> the physical <b>BOOT / IO0</b> button on the board, press the <b>EN / RST</b> button once, and release the BOOT button.</p>
-            <button class="action-btn primary" id="btnCloseModal" style="width:100%;">I Have Pressed It</button>
-        </div>
-    </div>
-
     <script>
-        let compiledBinaryBuffer = null;
-        let serialPort = null;
-        let serialReader = null;
-        let serialWriter = null;
-        let readLoopActive = false;
+        // UI Navigation Bindings
+        function changeView(view) {
+            if(view === 'editor') {
+                document.body.classList.remove('show-execution');
+                document.getElementById('displayViewTitle').textContent = "Editor";
+            } else {
+                document.body.classList.add('show-execution');
+                document.getElementById('displayViewTitle').textContent = "Execution Deck";
+            }
+        }
 
-        // --- Console / UI Interconnects ---
         const term = {
             log: (msg, type = 'info') => {
                 const logEl = document.getElementById('termLog');
@@ -522,43 +438,25 @@ void loop() {
             clear: () => { document.getElementById('termLog').innerHTML = ''; }
         };
 
-        // UI View State Controllers
-        function changeView(view) {
-            if(view === 'editor') {
-                document.body.classList.remove('show-execution');
-                document.getElementById('displayViewTitle').textContent = "Editor";
-            } else {
-                document.body.classList.add('show-execution');
-                document.getElementById('displayViewTitle').textContent = "Execution Deck";
-            }
-        }
-
-        // Drawer Event Bindings
         document.getElementById('btnOpenDrawer').addEventListener('click', () => document.body.classList.add('drawer-open'));
         document.getElementById('btnCloseDrawer').addEventListener('click', () => document.body.classList.remove('drawer-open'));
         document.getElementById('drawerOverlay').addEventListener('click', () => document.body.classList.remove('drawer-open'));
-        document.getElementById('btnReturnEditor').addEventListener('click', () => { disconnectSerial(); changeView('editor'); });
+        document.getElementById('btnReturnEditor').addEventListener('click', () => changeView('editor'));
 
-        // --- C++ Regular Expression Dependency Parser ---
+        // Smart C++ Dependency Scanning Mapping Engine
         function extractDependencies(code) {
             const includeRegex = /#include\s*[<"]([^>"]+)[>"]/g;
             const foundLibraries = new Set();
             let match;
-            const registryMap = {
-                "ArduinoJson.h": "bblanchon/ArduinoJson",
-                "DHT.h": "adafruit/DHT sensor library",
-                "Adafruit_NeoPixel.h": "adafruit/Adafruit NeoPixel",
-                "PubSubClient.h": "knolleary/PubSubClient"
-            };
+            const registryMap = { "ArduinoJson.h": "bblanchon/ArduinoJson", "DHT.h": "adafruit/DHT sensor library" };
             while ((match = includeRegex.exec(code)) !== null) {
-                const header = match[1];
-                if (registryMap[header]) foundLibraries.add(registryMap[header]);
+                if (registryMap[match[1]]) foundLibraries.add(registryMap[match[1]]);
             }
             return Array.from(foundLibraries).join(', ');
         }
 
-        // --- Cloud Compilation Dispatcher Pipeline ---
-        async function runCompilation() {
+        // Native GitHub API Orchestrator Actions Engine Loop
+        async function runCompilationPipeline() {
             const user = document.getElementById('ghUser').value.trim();
             const repo = document.getElementById('ghRepo').value.trim();
             const pat = document.getElementById('ghPat').value.trim();
@@ -566,21 +464,19 @@ void loop() {
             const code = document.getElementById('codeEditor').value;
 
             if (!user || !repo || !pat) {
-                alert("Missing execution parameters. Open the configuration drawer and input your GitHub credentials.");
+                alert("Credentials missing! Slide open the configuration panel and provide valid repository authorization options.");
                 document.body.classList.add('drawer-open');
                 return;
             }
 
-            // Interface Initialization
             document.getElementById('btnCompile').disabled = true;
-            compiledBinaryBuffer = null;
+            document.getElementById('btnDownloadBundle').disabled = true;
             changeView('execution');
             term.clear();
-            
+
             document.getElementById('statusTxt').textContent = "Compiling...";
             document.getElementById('statusDot').style.backgroundColor = "var(--warning)";
-            
-            term.log("Starting remote compilation framework via GitHub Action Containers...", 'info');
+            term.log("Packaging code parameters and sending request payload to GitHub Actions...", 'info');
 
             const codeBase64 = btoa(encodeURIComponent(code).replace(/%([0-9A-F]{2})/g, (m, p) => String.fromCharCode('0x' + p)));
             const dependencies = extractDependencies(code);
@@ -598,11 +494,11 @@ void loop() {
                     body: JSON.stringify({ ref: "main", inputs: { code_b64: codeBase64, board_type: board, libs_list: dependencies } })
                 });
 
-                if (!dispatch.ok) throw new Error(`Dispatch rejected with status: ${dispatch.status}. Confirm repository settings permissions permit write capabilities.`);
-
-                term.log("Container instantiation requested. Scanning running transaction streams...", 'info');
-                await new Promise(r => setTimeout(r, 6000));
+                if (!dispatch.ok) throw new Error(`Server execution dispatch rejected with code status: ${dispatch.status}`);
                 
+                term.log("Workflow triggered successfully. Synchronizing tracker steps...", 'info');
+                await new Promise(r => setTimeout(r, 6000));
+
                 let runId = null;
                 for (let i = 0; i < 10; i++) {
                     const res = await fetch(`https://api.github.com/repos/${user}/${repo}/actions/runs?workflow=compile.yml`, { headers });
@@ -616,207 +512,85 @@ void loop() {
                     await new Promise(r => setTimeout(r, 3000));
                 }
 
-                if(!runId) throw new Error("Could not map transaction hook to active tracking channel.");
-                term.log(`Targeting workflow running instance: #${runId}`, 'info');
+                if(!runId) throw new Error("Could not intercept context run execution token.");
+                term.log(`Linked live continuous runner container tracker ID: #${runId}`, 'info');
 
-                let successState = false;
+                let compilationSuccess = false;
                 while(true) {
                     const statusCheck = await fetch(`https://api.github.com/repos/${user}/${repo}/actions/runs/${runId}`, { headers });
                     const runData = await statusCheck.json();
-                    term.log(`Current Remote State Status: [${runData.status.toUpperCase()}]`, 'info');
+                    term.log(`Container Build Engine Status: [${runData.status.toUpperCase()}]`, 'info');
                     if(runData.status === 'completed') {
-                        successState = (runData.conclusion === 'success');
+                        compilationSuccess = (runData.conclusion === 'success');
                         break;
                     }
-                    await new Promise(r => setTimeout(r, 4000));
+                    await new Promise(r => setTimeout(r, 5000));
                 }
 
-                // Append compilation history logs to interface console window
+                // Append compilation history logs to panel interface terminal console
                 const logsRes = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/compilation.log?ref=build-output`, { headers });
                 if(logsRes.ok) {
                     const logData = await logsRes.json();
-                    term.log("\n--- Compiler Log Dump ---", 'info');
+                    term.log("\n--- Standard Compiler Log Trace Outputs ---", 'info');
                     term.log(decodeURIComponent(escape(atob(logData.content.replace(/\s/g, '')))), 'info');
                 }
 
-                if(!successState) throw new Error("Toolchain compilation build sequence halted with error structures.");
+                if(!compilationSuccess) throw new Error("Compilation aborted due to logic error checks or structural script dependency configuration flaws.");
 
-                // Grab Compiled Binary File Content Assets
-                const binRes = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/firmware.bin?ref=build-output`, { headers });
-                if(!binRes.ok) throw new Error("Missing binary artifact reference data target.");
-                const binData = await binRes.json();
-                
-                const binString = atob(binData.content.replace(/\s/g, ''));
-                const bytes = new Uint8Array(binString.length);
-                for(let i=0; i<binString.length; i++) bytes[i] = binString.charCodeAt(i);
-                
-                compiledBinaryBuffer = bytes.buffer;
-                term.log(`\nSuccess! Microcontroller firmware allocation loaded (${bytes.length} bytes)`, 'success');
-                
-                document.getElementById('statusTxt').textContent = "Build Ready";
+                term.log("\nSuccess! All 4 binary targets compiled and collected inside output branch reference.", 'success');
+                document.getElementById('statusTxt').textContent = "Finished";
                 document.getElementById('statusDot').style.backgroundColor = "var(--success)";
+                document.getElementById('btnDownloadBundle').disabled = false;
 
             } catch(e) {
-                term.log(`Process Failure Intercept: ${e.message}`, 'error');
-                document.getElementById('statusTxt').textContent = "Build Error";
+                term.log(`\nPipeline Halted: ${e.message}`, 'error');
+                document.getElementById('statusTxt').textContent = "Build Failed";
                 document.getElementById('statusDot').style.backgroundColor = "var(--error)";
             } finally {
                 document.getElementById('btnCompile').disabled = false;
             }
         }
 
-        // --- Interactive Web Serial Core Monitor & Flash Pipelines ---
-        async function connectSerial() {
-            if(serialPort) return true;
+        // --- One-Click Dynamic Zipball Retrieval Module ---
+        async function fetchFirmwareBundleArchive() {
+            const user = document.getElementById('ghUser').value.trim();
+            const repo = document.getElementById('ghRepo').value.trim();
+            const pat = document.getElementById('ghPat').value.trim();
+
+            term.log("Requesting auto-compressed branch zipball payload download allocations...", 'info');
+
             try {
-                term.log("Opening Web Serial communications link...", 'info');
-                serialPort = await navigator.serial.requestPort();
-                await serialPort.open({ baudRate: 115200 });
-                
-                document.getElementById('serialInput').disabled = false;
-                document.getElementById('btnSendSerial').disabled = false;
-                
-                startSerialReaderLoop();
-                return true;
-            } catch(e) {
-                term.log(`Interface Connection Dropped: ${e.message}`, 'error');
-                return false;
-            }
-        }
-
-        async function disconnectSerial() {
-            readLoopActive = false;
-            if (serialReader) { try { await serialReader.cancel(); serialReader.releaseLock(); } catch(e){} }
-            if (serialWriter) { try { serialWriter.releaseLock(); } catch(e){} }
-            if (serialPort) { try { await serialPort.close(); } catch(e){} serialPort = null; }
-            document.getElementById('serialInput').disabled = true;
-            document.getElementById('btnSendSerial').disabled = true;
-        }
-
-        async function startSerialReaderLoop() {
-            readLoopActive = true;
-            const decoder = new TextDecoder();
-            while (serialPort && serialPort.readable && readLoopActive) {
-                try {
-                    serialReader = serialPort.readable.getReader();
-                    while (true) {
-                        const { value, done } = await serialReader.read();
-                        if (done) break;
-                        if (value) {
-                            const chunk = decoder.decode(value);
-                            // Print incoming live serial updates directly to the terminal view
-                            const logEl = document.getElementById('termLog');
-                            logEl.textContent += chunk;
-                            logEl.scrollTop = logEl.scrollHeight;
-                        }
+                // Hits the native GitHub endpoint that instantly converts a targeted branch workspace structure into a flat zip package
+                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/zipball/build-output`, {
+                    headers: {
+                        "Authorization": `Bearer ${pat}`,
+                        "Accept": "application/vnd.github.v3+json"
                     }
-                } catch (e) {
-                    break;
-                } finally {
-                    if(serialReader) { serialReader.releaseLock(); serialReader = null; }
-                }
-            }
-        }
+                });
 
-        async function sendSerialCommand() {
-            const inputEl = document.getElementById('serialInput');
-            const cmd = inputEl.value;
-            if(!cmd || !serialPort) return;
-            
-            try {
-                const encoder = new TextEncoder();
-                serialWriter = serialPort.writable.getWriter();
-                await serialWriter.write(encoder.encode(cmd + "\r\n"));
-                inputEl.value = '';
-            } catch(e) {
-                term.log(`Failed to transmit command: ${e.message}`, 'error');
-            } finally {
-                if(serialWriter) { serialWriter.releaseLock(); serialWriter = null; }
-            }
-        }
+                if(!response.ok) throw new Error("Could not pull zipball resource reference structures down.");
 
-        // --- Flash & Erase Automation Engines ---
-        async function runFlashTask(autoErase = false) {
-            if (!compiledBinaryBuffer) {
-                alert("No active binary firmware asset residing in local buffer execution storage. Compile the script first.");
-                return;
-            }
-            
-            const connected = await connectSerial();
-            if(!connected) return;
-
-            // Stop the serial reader monitor tracking loop during active flashing operations
-            readLoopActive = false;
-            if(serialReader) { await serialReader.cancel(); }
-
-            // Trigger Bootloader Modal Instructions Warning Notice Overlay
-            document.getElementById('bootloaderModal').classList.add('active');
-
-            document.getElementById('statusTxt').textContent = autoErase ? "Erasing..." : "Uploading...";
-            document.getElementById('statusDot').style.backgroundColor = "var(--warning)";
-
-            // Helper to wait until the modal confirmation button is tapped on a mobile device
-            await new Promise(resolve => {
-                document.getElementById('btnCloseModal').onclick = () => {
-                    document.getElementById('bootloaderModal').classList.remove('active');
-                    resolve();
-                };
-            });
-
-            try {
-                serialWriter = serialPort.writable.getWriter();
+                const fileBlob = await response.blob();
+                const clientDownloadUrl = window.URL.createObjectURL(fileBlob);
                 
-                // Hardware Hardware DTR/RTS Reset Sequence Toggle Handshake Routine
-                term.log("Executing hardware reset vector parameters...", 'info');
-                await serialPort.setSignals({ dataTerminalReady: false, readyToSend: true });
-                await new Promise(r => setTimeout(r, 100));
-                await serialPort.setSignals({ dataTerminalReady: true, readyToSend: false });
-                await new Promise(r => setTimeout(r, 400));
-                await serialPort.setSignals({ dataTerminalReady: false, readyToSend: false });
-
-                if(autoErase) {
-                    term.log("Sending explicit flash wipe parameters to memory block storage...", 'warn');
-                    // Mock implementation sequence block for basic pure text terminal interactions
-                    await new Promise(r => setTimeout(r, 2000));
-                    term.log("Memory sectors wiped successfully.", 'success');
-                }
-
-                term.log("Streaming application binary bytes down physical interfaces...", 'info');
-                const view = new Uint8Array(compiledBinaryBuffer);
-                const chunk = 1024;
-                let offset = 0;
-
-                while(offset < view.length) {
-                    const block = view.slice(offset, offset + chunk);
-                    await serialWriter.write(block);
-                    offset += chunk;
-                    term.log(`Transmission complete: ${Math.min(100, Math.round((offset/view.length)*100))}%`, 'info');
-                    await new Promise(r => setTimeout(r, 35));
-                }
-
-                term.log("Writing operation sequence absolute! Restoring code execution run loop...", 'success');
-                await serialPort.setSignals({ dataTerminalReady: false, readyToSend: true });
-                await new Promise(r => setTimeout(r, 200));
-                await serialPort.setSignals({ dataTerminalReady: false, readyToSend: false });
-
-                document.getElementById('statusTxt').textContent = "Execution Active";
-                document.getElementById('statusDot').style.backgroundColor = "var(--success)";
+                // Programmatic anchor click trigger to pass data cleanly to the device download manager
+                const tempAnchor = document.createElement('a');
+                tempAnchor.href = clientDownloadUrl;
+                tempAnchor.download = `${repo}-esp32-firmware.zip`;
+                document.body.appendChild(tempAnchor);
+                tempAnchor.click();
+                tempAnchor.remove();
+                
+                window.URL.revokeObjectURL(clientDownloadUrl);
+                term.log("ZIP firmware bundle downloaded cleanly. Extract it on your mobile storage disk to execute flash tools natively!", 'success');
 
             } catch(e) {
-                term.log(`Flashing Task Pipeline Failed: ${e.message}`, 'error');
-            } finally {
-                if(serialWriter) { serialWriter.releaseLock(); serialWriter = null; }
-                // Reactivate and turn the background Serial Monitor loop reader hooks back on
-                startSerialReaderLoop();
+                term.log(`Archive download error encountered: ${e.message}`, 'error');
             }
         }
 
-        // Attach DOM Button Action Hooks
-        document.getElementById('btnCompile').addEventListener('click', runCompilation);
-        document.getElementById('btnFlash').addEventListener('click', () => runFlashTask(false));
-        document.getElementById('btnErase').addEventListener('click', () => runFlashTask(true));
-        document.getElementById('btnSendSerial').addEventListener('click', sendSerialCommand);
-        document.getElementById('serialInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendSerialCommand(); });
+        document.getElementById('btnCompile').addEventListener('click', runCompilationPipeline);
+        document.getElementById('btnDownloadBundle').addEventListener('click', fetchFirmwareBundleArchive);
     </script>
 </body>
 </html>
