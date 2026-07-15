@@ -31,11 +31,12 @@
         body {
             background-color: var(--bg-main);
             color: var(--text-main);
-            height: 100vh;
+            height: 100dvh; /* Fixed: Uses dynamic viewport height to adapt to mobile keyboards */
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            position: relative;
+            position: fixed; /* Fixed: Prevents whole page bouncing/pull-to-refresh data loss */
+            width: 100%;
         }
 
         /* --- Top Navigation Bar --- */
@@ -48,6 +49,7 @@
             justify-content: space-between;
             padding: 0 16px;
             z-index: 10;
+            flex-shrink: 0; /* Fixed: Navigation bar can NEVER compress or hide */
         }
 
         .nav-left {
@@ -106,6 +108,7 @@
             flex: 1;
             position: relative;
             overflow: hidden;
+            height: calc(100dvh - var(--nav-height));
         }
 
         .view-pane {
@@ -117,6 +120,7 @@
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         #viewEditor {
@@ -152,6 +156,8 @@
             line-height: 1.6;
             padding: 20px;
             outline: none;
+            overflow-y: auto; /* Fixed: Text scrolling happens safely inside the text box only */
+            -webkit-overflow-scrolling: touch; /* Smooth iOS momentum scrolling */
         }
 
         /* --- Execution Deck Panel --- */
@@ -162,6 +168,7 @@
             display: flex;
             flex-direction: column;
             gap: 14px;
+            flex-shrink: 0;
         }
 
         .execution-meta {
@@ -236,6 +243,7 @@
             overflow-y: auto;
             white-space: pre-wrap;
             color: #a9b1d6;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* --- Drawer Configuration Overlay Layout --- */
@@ -348,21 +356,7 @@
     <main class="workspace-container">
         <!-- View 1: Application Script Text Field -->
         <div class="view-pane" id="viewEditor">
-            <textarea id="codeEditor" spellcheck="false">#include <Arduino.h>
-
-#define LED_PIN 2
-
-void setup() {
-    pinMode(LED_PIN, OUTPUT);
-    Serial.begin(115200);
-}
-
-void loop() {
-    digitalWrite(LED_PIN, HIGH);
-    delay(1000);
-    digitalWrite(LED_PIN, LOW);
-    delay(1000);
-}</textarea>
+            <textarea id="codeEditor" spellcheck="false"></textarea>
         </div>
 
         <!-- View 2: Compilation & Download Deck -->
@@ -415,6 +409,33 @@ void loop() {
     </nav>
 
     <script>
+        // Default backup script template if local storage is clean
+        const defaultCodeTemplate = `#include <Arduino.h>\n\n#define LED_PIN 2\n\nvoid setup() {\n    pinMode(LED_PIN, OUTPUT);\n    Serial.begin(115200);\n}\n\nvoid loop() {\n    digitalWrite(LED_PIN, HIGH);\n    delay(1000);\n    digitalWrite(LED_PIN, LOW);\n    delay(1000);\n}`;
+
+        // Fixed / Added: Automatic Local Storage Backup Engine
+        window.addEventListener('DOMContentLoaded', () => {
+            const editor = document.getElementById('codeEditor');
+            
+            // Restore script workspace
+            const savedCode = localStorage.getItem('cloud_ide_backup_code');
+            editor.value = savedCode ? savedCode : defaultCodeTemplate;
+
+            // Restore configuration fields
+            if(localStorage.getItem('cloud_ide_user')) document.getElementById('ghUser').value = localStorage.getItem('cloud_ide_user');
+            if(localStorage.getItem('cloud_ide_repo')) document.getElementById('ghRepo').value = localStorage.getItem('cloud_ide_repo');
+            if(localStorage.getItem('cloud_ide_pat')) document.getElementById('ghPat').value = localStorage.getItem('cloud_ide_pat');
+
+            // Hook instant backup listener
+            editor.addEventListener('input', () => {
+                localStorage.setItem('cloud_ide_backup_code', editor.value);
+            });
+
+            // Keep track of settings adjustments dynamically
+            document.getElementById('ghUser').addEventListener('input', (e) => localStorage.setItem('cloud_ide_user', e.target.value.trim()));
+            document.getElementById('ghRepo').addEventListener('input', (e) => localStorage.setItem('cloud_ide_repo', e.target.value.trim()));
+            document.getElementById('ghPat').addEventListener('input', (e) => localStorage.setItem('cloud_ide_pat', e.target.value.trim()));
+        });
+
         // UI Navigation Bindings
         function changeView(view) {
             if(view === 'editor') {
@@ -443,7 +464,6 @@ void loop() {
         document.getElementById('drawerOverlay').addEventListener('click', () => document.body.classList.remove('drawer-open'));
         document.getElementById('btnReturnEditor').addEventListener('click', () => changeView('editor'));
 
-        // Smart C++ Dependency Scanning Mapping Engine
         function extractDependencies(code) {
             const includeRegex = /#include\s*[<"]([^>"]+)[>"]/g;
             const foundLibraries = new Set();
@@ -455,7 +475,6 @@ void loop() {
             return Array.from(foundLibraries).join(', ');
         }
 
-        // Native GitHub API Orchestrator Actions Engine Loop
         async function runCompilationPipeline() {
             const user = document.getElementById('ghUser').value.trim();
             const repo = document.getElementById('ghRepo').value.trim();
@@ -527,7 +546,6 @@ void loop() {
                     await new Promise(r => setTimeout(r, 5000));
                 }
 
-                // Append compilation history logs to panel interface terminal console
                 const logsRes = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/compilation.log?ref=build-output`, { headers });
                 if(logsRes.ok) {
                     const logData = await logsRes.json();
@@ -535,7 +553,7 @@ void loop() {
                     term.log(decodeURIComponent(escape(atob(logData.content.replace(/\s/g, '')))), 'info');
                 }
 
-                if(!compilationSuccess) throw new Error("Compilation aborted due to logic error checks or structural script dependency configuration flaws.");
+                if(!compilationSuccess) throw new Error("Compilation aborted due to structural code issues or build dependency script configuration flaws.");
 
                 term.log("\nSuccess! All 4 binary targets compiled and collected inside output branch reference.", 'success');
                 document.getElementById('statusTxt').textContent = "Finished";
@@ -551,27 +569,19 @@ void loop() {
             }
         }
 
-        // --- FIXED: One-Click Dynamic Zipball Retrieval Module via Native OS Link Hook ---
         async function fetchFirmwareBundleArchive() {
             const user = document.getElementById('ghUser').value.trim();
             const repo = document.getElementById('ghRepo').value.trim();
-
             term.log("Requesting auto-compressed branch zipball payload download allocations...", 'info');
-
             try {
-                // Direct native browser download URL structure to completely avoid CORS preflight network blocks
                 const downloadUrl = `https://github.com/${user}/${repo}/archive/refs/heads/build-output.zip`;
-                
                 term.log("Bypassing CORS filters via direct browser download channel...", 'info');
-                
-                // Create an ephemeral anchor element to force an OS-level download stream
                 const tempAnchor = document.createElement('a');
                 tempAnchor.href = downloadUrl;
                 tempAnchor.download = `${repo}-esp32-firmware.zip`; 
                 document.body.appendChild(tempAnchor);
                 tempAnchor.click();
                 tempAnchor.remove();
-                
                 term.log("Download sequence successfully handed off to mobile browser engine!", 'success');
             } catch(e) {
                 term.log(`Archive download error encountered: ${e.message}`, 'error');
